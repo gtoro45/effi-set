@@ -1,4 +1,6 @@
 #include "effi_set.h"
+#include <fstream>
+#include <string>
 #include <vector>
 
 uint64_t vector_hasher(const std::vector<int>& vec) {
@@ -10,30 +12,40 @@ uint64_t vector_hasher(const std::vector<int>& vec) {
     return seed;
 }
 
+std::vector<std::string> read_lines(const std::string& filename) {
+    std::vector<std::string> lines;
+    std::ifstream file(filename);
+
+    if (!file.is_open())
+        return lines;
+
+    std::string line;
+    while (std::getline(file, line))
+        lines.push_back(line);
+
+    return lines;
+}
+
 int main() {
+    printf("beginning line reading... ");
+    std::vector<std::string> urls = read_lines("data/URL-input-1M-2025.txt");
+    printf("done\n");
+
     effi::effi_set<std::string, 8> set8;
-    set8.insert("hello world");
-    set8.insert("h3llo world");
-    set8.insert("hello wor1d");
-    printf("\n");
+    for(std::string s : urls) set8.insert(s);
+    printf("Memory Footprint = %dB\n", set8.memory_footprint());
 
     effi::effi_set<std::string, 16> set16;
-    set16.insert("hello world");
-    set16.insert("h3llo world");
-    set16.insert("hello wor1d");
-    printf("\n");
+    for(std::string s : urls) set16.insert(s);
+    printf("Memory Footprint = %dB\n", set16.memory_footprint());
     
     effi::effi_set<std::string, 32> set32;
-    set32.insert("hello world");
-    set32.insert("h3llo world");
-    set32.insert("hello wor1d");
-    printf("\n");
+    for(std::string s : urls) set32.insert(s);
+    printf("Memory Footprint = %dB\n", set32.memory_footprint());
     
     effi::effi_set<std::string, 64> set64;
-    set64.insert("hello world");
-    set64.insert("h3llo world");
-    set64.insert("hello wor1d");
-    printf("\n");
+    for(std::string s : urls) set64.insert(s);
+    printf("Memory Footprint = %dB\n", set64.memory_footprint());
 
     std::vector<int> vec;
     for(int i = 0; i < 1000; i++) vec.push_back(i);

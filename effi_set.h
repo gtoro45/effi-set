@@ -33,7 +33,24 @@ namespace effi {
 
             // grow the internal array when at/near capacity 
             void grow() {                           
-                
+                if(array != nullptr){
+                    _capacity *= 2;
+                    width_type* temp_arr = new width_type[_capacity]();
+                    uint8_t* temp_psls = new uint8_t[_capacity]();
+                    // TODO: resize the array
+                    delete[] array;
+                    delete[] PSLs;
+                    array = nullptr;
+                    PSLs = nullptr;
+                    array = temp_arr;
+                    PSLs = temp_psls;
+                }
+                else {
+                    array = new width_type[INITIAL_SET_CAP]();
+                    PSLs = new uint8_t[INITIAL_SET_CAP]();
+                    _capacity = INITIAL_SET_CAP;
+                    _size = 0;
+                }
             }
             
 
@@ -46,15 +63,15 @@ namespace effi {
 
             /************  Constructor(s) ************/
             // Default Constructor
-            effi_set() : array(new width_type[INITIAL_SET_CAP]), 
-                        PSLs(new uint8_t[INITIAL_SET_CAP])
+            effi_set() : array(new width_type[INITIAL_SET_CAP]()), 
+                        PSLs(new uint8_t[INITIAL_SET_CAP]()),
                         _size(0), 
                         _capacity(INITIAL_SET_CAP), 
                         hash_logic(&hash_function) {}
             
             // Custom Hash Function Constructor
-            effi_set(width_type (*custom_hash)(const T&)) : array(new width_type[INITIAL_SET_CAP]), 
-                                                            PSLs(new uint8_t[INITIAL_SET_CAP])
+            effi_set(width_type (*custom_hash)(const T&)) : array(new width_type[INITIAL_SET_CAP]()), 
+                                                            PSLs(new uint8_t[INITIAL_SET_CAP]()),
                                                             _size(0), 
                                                             _capacity(INITIAL_SET_CAP), 
                                                             hash_logic(custom_hash) {}
@@ -73,8 +90,28 @@ namespace effi {
                 }
 
                 width_type object_hash = this->hash_logic(object);
-                printf("Object Hash on insert call: %lu\n", object_hash);
-                // TODO
+                width_type idx = object_hash % _capacity;
+                uint8_t psl = 0;
+                while(array[idx] != 0) {
+                    // Robin Hood: 
+                    // steal from the rich (low PSL)
+                    // give to the poor (high PSL)
+                    // std::swap: both seats the winner (poor) and evicts the loser (rich)
+                    //            to find them a new home further down
+                    if(psl > PSLs[idx]) {
+                        std::swap(object_hash, array[idx]); // object_hash is now inserted, now probing for the element previously at array[idx]
+                        std::swap(psl, PSLs[idx]);          // psl is now inserted, now probing for the element previously at PSLs[idx]
+                    }
+                    
+                    // standard linear probing
+                    idx = (idx + 1) % _capacity;
+                    psl++;
+                }
+
+                array[idx] = object_hash;
+                PSLs[idx] = psl;
+                this->_size++;
+                
                 return 0;
             }
 
@@ -94,7 +131,16 @@ namespace effi {
             }
 
             int size() { return this->_size; }
+            
             int capacity() { return this->_capacity; }
+            
+            int memory_footprint() { 
+                return (sizeof(width_type) * this->_capacity) + 
+                        sizeof(uint8_t) + 
+                        sizeof(this->_size) +
+                        sizeof(this->_capacity) +
+                        sizeof(width_type*); 
+            }
     };
 
 
