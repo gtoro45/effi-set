@@ -1,9 +1,6 @@
-#include "effi_set.h"
-#include <fstream>
-#include <string>
-#include <vector>
-#include <unordered_set>
+#include "benchmark.h"
 
+// custom hash function for std::vector<int>
 uint64_t vector_hasher(const std::vector<int>& vec) {
     uint64_t seed = 0;
     for (int i : vec) {
@@ -13,18 +10,26 @@ uint64_t vector_hasher(const std::vector<int>& vec) {
     return seed;
 }
 
-std::vector<std::string> read_lines(const std::string& filename) {
-    std::vector<std::string> lines;
-    std::ifstream file(filename);
+// verify the GCC Small String Optimization Limit to correctly estimate unordered_set capacity
+void verify_sso(const std::string& s) {
+    const void* string_object_addr = &s;
+    const void* internal_data_addr = s.data();
+    size_t string_object_size = sizeof(s);
 
-    if (!file.is_open())
-        return lines;
+    // Check if the data pointer points to a location within the object's own 32/24 bytes
+    bool is_sso = (internal_data_addr >= string_object_addr && 
+                   internal_data_addr < (char*)string_object_addr + string_object_size);
 
-    std::string line;
-    while (std::getline(file, line))
-        lines.push_back(line);
-
-    return lines;
+    std::cout << "String: \"" << s << "\" (Length: " << s.length() << ")\n";
+    std::cout << "  Object Addr: " << string_object_addr << "\n";
+    std::cout << "  Data Addr:   " << internal_data_addr << "\n";
+    
+    if (is_sso) {
+        std::cout << "  RESULT: [ SSO ] (len=" << s.length() << " Stored inside the object)\n";
+    } else {
+        std::cout << "  RESULT: [ HEAP ] (len=" << s.length() << " Stored on the heap)\n";
+    }
+    std::cout << "------------------------------------------\n";
 }
 
 int main() {
@@ -32,47 +37,35 @@ int main() {
     std::vector<std::string> urls = read_lines("data/URL-input-1M-2025.txt");
     printf("done\n");
 
-    // Baseline comparison
+    // Baseline Benchmark (std::string)
     std::unordered_set<std::string> uset;
-    double footprint = sizeof(std::string);
-    for(std::string s : urls) {
-        uset.insert(s);
-        footprint += s.size();
-    }
-    footprint = footprint / 1000000; // convert to MB
+    for(std::string s : urls) { uset.insert(s); }
     int expected_unique = uset.size();
-    printf("Estimated Baseline Footprint = %f MB\n", footprint);
+
+    // goal --> estimate unordered_set capacity
+    // account for the number of buckets
+    double base_footprint = (uset.bucket_count() * sizeof(void*));   
+    // then, account for heap-allocated nodes + data                                   
+    for(std::string s : uset) { 
+        // avoid small string optimization (SSO) double counting
+        // results from verify_sso show cutoff is >15 on gcc
+        if(s.size() > 15)
+           base_footprint += (sizeof(std::string) + s.size() + sizeof(void*));
+        // else 
+        //     verify_sso(s);
+    }    
+    base_footprint = base_footprint / (1024 * 1024); // convert to MB
+    
+    printf("Estimated Baseline Footprint = %.2f MB\n", base_footprint);
     printf("Expected Unique Strings = %d\n\n", expected_unique);
 
-    // Precision Tests
-    effi::effi_set<std::string, 8> set8;
-    for(std::string s : urls) set8.insert(s);
-    printf("8-bit Memory Footprint = %f MB\n", set8.memory_footprint(true));
-    int size = set8.size();
-    double loss = 1 - ((double)size / (double)expected_unique);
-    printf("Stored Unique Strings = %d MB (%.2f%% loss)\n\n ", size, loss * 100);
+    // Insertion Benchmarks
+    insertion_bench<std::string, 8>(urls, base_footprint, expected_unique);
+    insertion_bench<std::string, 16>(urls, base_footprint, expected_unique);
+    insertion_bench<std::string, 32>(urls, base_footprint, expected_unique);
+    insertion_bench<std::string, 64>(urls, base_footprint, expected_unique);
 
-    effi::effi_set<std::string, 16> set16;
-    for(std::string s : urls) set16.insert(s);
-    printf("16-bit Memory Footprint = %f MB\n", set16.memory_footprint(true));
-    size = set16.size();
-    loss = 1 - ((double)size / (double)expected_unique);
-    printf("Stored Unique Strings = %d MB (%.2f%% loss)\n\n ", size, loss * 100);
-    
-    effi::effi_set<std::string, 32> set32;
-    for(std::string s : urls) set32.insert(s);
-    printf("32-bit Memory Footprint = %f MB\n", set32.memory_footprint(true));
-    size = set32.size();
-    loss = 1 - ((double)size / (double)expected_unique);
-    printf("Stored Unique Strings = %d MB (%.2f%% loss)\n\n ", size, loss * 100);
-    
-    effi::effi_set<std::string, 64> set64;
-    for(std::string s : urls) set64.insert(s);
-    printf("64-bit Memory Footprint = %f MB\n", set64.memory_footprint(true));
-    size = set64.size();
-    loss = 1 - ((double)size / (double)expected_unique);
-    printf("Stored Unique Strings = %d MB (%.2f%% loss)\n\n ", size, loss * 100);
-
+    // Custom Hash Function Test (std::vector not hashable by std::hash)
     // std::vector<int> vec;
     // for(int i = 0; i < 1000; i++) vec.push_back(i);
     // effi::effi_set<std::vector<int>, 64> vec_set64(&vector_hasher);
