@@ -35,11 +35,21 @@ void verify_sso(const std::string& s) {
 int main() {
     printf("beginning line reading... ");
     std::vector<std::string> urls = read_lines("data/URL-input-1M-2025.txt");
+    std::vector<std::string> urlsA = read_lines("data/URL-input-1M.txt");
+    urls.insert(urls.end(), urlsA.begin(), urlsA.end());
     printf("done\n");
 
     /******* Baseline Benchmark (std::string) *******/
     std::unordered_set<std::string> uset;
+    auto start = std::chrono::high_resolution_clock::now();
     for(std::string s : urls) { uset.insert(s); }
+    auto end = std::chrono::high_resolution_clock::now();
+
+    double base_insert_ms = std::chrono::duration<double, std::milli>(end - start).count();
+    double ns_per_insert = (base_insert_ms * 1e6) / urls.size();
+    printf("Total insert time = %.2f\n", base_insert_ms);
+    printf("Time per insert (ns) = %.2f\n", ns_per_insert);
+    
     int expected_unique = uset.size();
 
     // goal --> estimate unordered_set capacity
@@ -62,13 +72,13 @@ int main() {
 
 
     /******* Insertion Benchmarks *******/
-    insertion_bench<std::string, 8>(urls, base_footprint, expected_unique);
-    insertion_bench<std::string, 16>(urls, base_footprint, expected_unique);
-    insertion_bench<std::string, 32>(urls, base_footprint, expected_unique);
-    insertion_bench<std::string, 64>(urls, base_footprint, expected_unique);
+    insertion_bench<std::string, 8>(urls, base_insert_ms, base_footprint, expected_unique);
+    insertion_bench<std::string, 16>(urls, base_insert_ms, base_footprint, expected_unique);
+    insertion_bench<std::string, 32>(urls, base_insert_ms, base_footprint, expected_unique);
+    insertion_bench<std::string, 64>(urls, base_insert_ms, base_footprint, expected_unique);
 
 
-    
+
     /******* Some Tests *******/
     // Custom Hash Function Test (std::vector not hashable by std::hash)
     // std::vector<int> vec;
