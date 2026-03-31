@@ -34,16 +34,33 @@ namespace effi {
             // grow the internal array when at/near capacity 
             void grow() {                           
                 if(array != nullptr){
-                    _capacity *= 2;
-                    width_type* temp_arr = new width_type[_capacity]();
-                    uint8_t* temp_psls = new uint8_t[_capacity]();
-                    // TODO: resize the array
-                    delete[] array;
+                    /********************* RH Resizing *********************/
+                    // (1) clear and resize PSLs (data is garbage atp)
                     delete[] PSLs;
-                    array = nullptr;
                     PSLs = nullptr;
-                    array = temp_arr;
-                    PSLs = temp_psls;
+                    PSLs = new uint8_t[_capacity]();
+                    
+                    // (2) copy elements into temp array, then clear and resize main array
+                    int old_capacity = _capacity;
+                    _capacity *= 2;
+                    width_type* temp_arr = new width_type[_capacity](); // can be optimized to old_capacity, will do so later
+                    for(int i = 0; i < old_capacity; i++) temp_arr[i] = std::move(this->array[i]);
+                    delete[] array;
+                    array = nullptr;
+
+                    // (3) re-insert elements from temp_arr (clear _size before insertion increments it)
+                    _size = 0;
+                    array = new width_type[_capacity]();
+                    for(int i = 0; i < old_capacity; i++) {
+                        if(temp_arr[i] != 0) {
+                            insert(temp_arr[i]);
+                        }
+                    }
+
+                    // (4) clear the temp array
+                    delete[] temp_arr;
+                    temp_arr = nullptr;
+                    /*******************************************************/
                 }
                 else {
                     array = new width_type[INITIAL_SET_CAP]();
@@ -84,12 +101,17 @@ namespace effi {
 
             /************  Class Methods ************/
             int insert(T object) {
+                width_type object_hash = this->hash_logic(object);
+                insert(object_hash);
+                return 0;
+            }
+
+            int insert(width_type object_hash) {
                 // grow internal array at 75% capacity
                 if(this->_size >= this->_capacity * 0.75) {
                     this->grow();
                 }
-
-                width_type object_hash = this->hash_logic(object);
+                
                 width_type idx = object_hash % _capacity;
                 uint8_t psl = 0;
                 while(array[idx] != 0) {
