@@ -121,11 +121,11 @@ namespace effi {
                     // don't insert on existence (whole point)
                     if(object_hash == array[idx]) return 1;
 
-                    // Robin Hood: 
-                    // steal from the rich (low PSL)
-                    // give to the poor (high PSL)
-                    // std::swap: both seats the winner (poor) and evicts the loser (rich)
-                    //            to find them a new home further down
+                    // Robin Hood:  steal from the rich (low PSL)
+                    //              give to the poor (high PSL)
+                    //              std::swap: both seats the winner (poor) 
+                    //              and evicts the loser (rich)
+                    //              to find them a new home further down
                     if(psl > PSLs[idx]) {
                         std::swap(object_hash, array[idx]); // object_hash is now inserted, now probing for the element previously at array[idx]
                         std::swap(psl, PSLs[idx]);          // psl is now inserted, now probing for the element previously at PSLs[idx]
@@ -145,8 +145,25 @@ namespace effi {
 
             bool contains(T object) {
                 width_type object_hash = this->hash_logic(object);
-                width_type idx = object % _capacity;
-                // TODO
+                width_type idx = object_hash % _capacity;
+                uint8_t psl = 0;
+
+                while(array[idx] != 0) {
+                    // return on successful retrieval
+                    if(object_hash == array[idx]) return true;
+
+                    // Robin Hood:  if we have searched farther than the element
+                    //              in current slot has traveled, our hash cannot
+                    //              exist further down the line
+                    if(psl > PSLs[idx]) return false;
+
+                    // standard linear probing
+                    idx = (idx + 1) % _capacity;
+                    psl++;
+                }
+
+                // only reachable if loop condition isn't met
+                // i.e., no such hash exists
                 return false;
             }
             
