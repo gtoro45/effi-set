@@ -37,7 +37,7 @@ int main() {
     std::vector<std::string> urls = read_lines("data/URL-input-1M-2025.txt");
     printf("done\n");
 
-    // Baseline Benchmark (std::string)
+    /******* Baseline Benchmark (std::string) *******/
     std::unordered_set<std::string> uset;
     for(std::string s : urls) { uset.insert(s); }
     int expected_unique = uset.size();
@@ -59,12 +59,17 @@ int main() {
     printf("Estimated Baseline Footprint = %.2f MB\n", base_footprint);
     printf("Expected Unique Strings = %d\n\n", expected_unique);
 
-    // Insertion Benchmarks
+
+
+    /******* Insertion Benchmarks *******/
     insertion_bench<std::string, 8>(urls, base_footprint, expected_unique);
     insertion_bench<std::string, 16>(urls, base_footprint, expected_unique);
     insertion_bench<std::string, 32>(urls, base_footprint, expected_unique);
     insertion_bench<std::string, 64>(urls, base_footprint, expected_unique);
 
+
+    
+    /******* Some Tests *******/
     // Custom Hash Function Test (std::vector not hashable by std::hash)
     // std::vector<int> vec;
     // for(int i = 0; i < 1000; i++) vec.push_back(i);
