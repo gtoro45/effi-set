@@ -39,7 +39,7 @@ int main() {
     urls.insert(urls.end(), urlsA.begin(), urlsA.end());
     printf("done\n");
 
-    /******* Baseline Benchmark (std::string) *******/
+    /******* Baseline Insertion Benchmark (std::string) *******/
     std::unordered_set<std::string> uset;
     auto start = std::chrono::high_resolution_clock::now();
     for(std::string s : urls) { uset.insert(s); }
@@ -72,11 +72,16 @@ int main() {
 
 
     /******* Insertion Benchmarks *******/
-    insertion_bench<std::string, 8>(urls, base_insert_ms, base_footprint, expected_unique);
-    insertion_bench<std::string, 16>(urls, base_insert_ms, base_footprint, expected_unique);
+    // insertion_bench<std::string, 8>(urls, base_insert_ms, base_footprint, expected_unique);
+    // insertion_bench<std::string, 16>(urls, base_insert_ms, base_footprint, expected_unique);
     insertion_bench<std::string, 32>(urls, base_insert_ms, base_footprint, expected_unique);
     insertion_bench<std::string, 64>(urls, base_insert_ms, base_footprint, expected_unique);
 
+    
+    /******* Baseline Access Benchmark (std::string) *******/
+
+    
+    /******* Access Benchmarks *******/
 
 
     /******* Some Tests *******/
