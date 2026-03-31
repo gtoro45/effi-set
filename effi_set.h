@@ -5,6 +5,7 @@
 
 namespace effi {
     #define INITIAL_SET_CAP 10
+    #define MASK_56(a) (uint64_t)(a) & 0xFFFFFFFFFFFFFF;
 
     template <typename T, int precision> 
     class effi_set {
@@ -35,14 +36,16 @@ namespace effi {
             void grow() {                           
                 if(array != nullptr){
                     /********************* RH Resizing *********************/
+                    // (0) double capacity, keep track of previous
+                    int old_capacity = _capacity;
+                    _capacity *= 2;
+
                     // (1) clear and resize PSLs (data is garbage atp)
                     delete[] PSLs;
                     PSLs = nullptr;
                     PSLs = new uint8_t[_capacity]();
                     
                     // (2) copy elements into temp array, then clear and resize main array
-                    int old_capacity = _capacity;
-                    _capacity *= 2;
                     width_type* temp_arr = new width_type[_capacity](); // can be optimized to old_capacity, will do so later
                     for(int i = 0; i < old_capacity; i++) temp_arr[i] = std::move(this->array[i]);
                     delete[] array;
@@ -115,6 +118,9 @@ namespace effi {
                 width_type idx = object_hash % _capacity;
                 uint8_t psl = 0;
                 while(array[idx] != 0) {
+                    // don't insert on existence (whole point)
+                    if(object_hash == array[idx]) return 1;
+
                     // Robin Hood: 
                     // steal from the rich (low PSL)
                     // give to the poor (high PSL)
@@ -138,8 +144,10 @@ namespace effi {
             }
 
             bool contains(T object) {
+                width_type object_hash = this->hash_logic(object);
+                width_type idx = object % _capacity;
                 // TODO
-                return 0;
+                return false;
             }
             
             int remove(T object) {
@@ -147,21 +155,28 @@ namespace effi {
                 return 0;
             }
 
-            int clear() {
-                // TODO
-                return 0;
+            void clear() {
+                // clear members, in order
+                delete[] this->array;
+                delete[] this->PSLs;
+                this->array = nullptr;
+                this->PSLs = nullptr;
+                this->_size = 0;
+                this->_capacity = 0;
             }
 
             int size() { return this->_size; }
             
             int capacity() { return this->_capacity; }
             
-            int memory_footprint() { 
-                return (sizeof(width_type) * this->_capacity) + 
-                        sizeof(uint8_t) + 
-                        sizeof(this->_size) +
-                        sizeof(this->_capacity) +
-                        sizeof(width_type*); 
+            double memory_footprint(bool MB) { 
+                // TODO: check if T is iterable and add sizeof its elements
+                double bytes = (sizeof(width_type) * this->_capacity) + 
+                            sizeof(uint8_t) + 
+                            sizeof(this->_size) +
+                            sizeof(this->_capacity) +
+                            sizeof(width_type*); 
+                return (MB) ? bytes / 1000000 : bytes;
             }
     };
 
