@@ -38,7 +38,7 @@ namespace effi {
                     /********************* RH Resizing *********************/
                     // (0) double capacity, keep track of previous
                     int old_capacity = _capacity;
-                    _capacity *= 2;
+                    _capacity *= 2; // this can be optimized
 
                     // (1) clear and resize PSLs (data is garbage atp)
                     delete[] PSLs;
@@ -172,11 +172,11 @@ namespace effi {
             double memory_footprint(bool MB) { 
                 // TODO: check if T is iterable and add sizeof its elements
                 double bytes = (sizeof(width_type) * this->_capacity) + 
-                            sizeof(uint8_t) + 
-                            sizeof(this->_size) +
-                            sizeof(this->_capacity) +
-                            sizeof(width_type*); 
-                return (MB) ? bytes / 1000000 : bytes;
+                                (sizeof(uint8_t) * this->_capacity) +
+                                sizeof(this->_size) +
+                                sizeof(this->_capacity) +
+                                sizeof(width_type*); 
+                return (MB) ? bytes / (1024 * 1024) : bytes;
             }
     };
 
