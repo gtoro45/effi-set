@@ -5,7 +5,7 @@
 
 namespace effi {
     #define INITIAL_SET_CAP 10
-    #define MASK_56(a) (uint64_t)(a) & 0xFFFFFFFFFFFFFF;
+    #define MASK_56(a) ((a) & 0x00FFFFFFFFFFFFFF)
 
     template <typename T, int precision> 
     class effi_set {
@@ -198,17 +198,89 @@ namespace effi {
     };
 
 
-    // TODO: protoyping so I don't forget
-    // template <typename T, int precision> 
-    // class effi_set_packed_64 {
-    //     private:
-    //         // single element of the internal array (4-byte aligned)
-    //         struct element {
-    //                 uint64_t hash : 56;     // 56-bit hash
-    //                 uint64_t pcl : 8;       // 8-bit pcl for Robin Hood
-    //         };
 
-    //     public:
-    //         // TODO
-    // };
+
+
+
+    /*************************************************************/
+    /*************************************************************/
+    /****** Packed 64-bit effi_set (56 bit hash, 8 bit psl) ******/
+    /*************************************************************/
+    /*************************************************************/
+    
+    // single element of the internal array (4-byte aligned)
+    struct element {
+        uint64_t hash : 56;     // 56-bit hash
+        uint64_t pcl : 8;       // 8-bit pcl for Robin Hood
+    };
+
+    
+    template <typename T> 
+    class effi_set_packed_64 {
+        private:
+            // the internal set array --> holds hashes and psls in 1 64-bit element
+            element* array;
+
+            // the set's size visible to the user
+            int _size;                              
+            
+            // current set capacity
+            int _capacity;         
+
+            // function pointer to the hash function used by the set
+            uint64_t (*hash_logic)(const T&);
+            
+            void grow();
+
+        public:
+            /************  Internal Hash Function ************/
+            static uint64_t hash_function(const T& object) {
+                uint64_t _hash = std::hash<T>{}(object);
+                return MASK_56(_hash);
+            }
+
+            /************  Constructor(s) ************/
+            // Default Constructor
+            effi_set_packed_64();
+            
+            // Custom Hash Function Constructor
+            effi_set_packed_64(uint64_t (*custom_hash)(const T&));
+
+            // Destructor
+            ~effi_set_packed_64();
+
+            /************  Class Methods ************/
+            int insert(T object) {
+                // TODO
+                return 0;
+            }
+
+            int insert(uint64_t object_hash) {
+                // TODO
+                return 0;
+            }
+
+            bool contains(T object) {
+                // TODO
+                return false;
+            }
+            
+            int remove(T object) {
+                // TODO
+                return 0;
+            }
+
+            void clear() {
+                // TODO
+            }
+
+            int size() { return this->_size; }
+            
+            int capacity() { return this->_capacity; }
+            
+            double memory_footprint(bool MB) { 
+                // TODO
+                return 0.0;
+            }
+    };
 }
